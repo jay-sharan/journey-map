@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Life Journey | Jayendra Sharan</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #map { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+const journey = [
+  ["1989","Madhubani, Bihar", 26.3460654,86.0530027],
+  ["1992","Purnia, Bihar", 25.7775861,87.4700122],
+  ["1995", "Forbesgan, Bihar", 25.2000000,87.6500000],
+  ["2004", "Jamshedpur, Jharkhand", 22.8046,86.2020],
+  ["2007", "Berhampur, Odisha", 19.8000,84.8000],
+  ["2012", "Hyderabad, Telangana", 17.385044,78.486671],
+  ["2013", "Pune, Maharashtra", 18.5204,73.8567],
+  ["2015", "Hyderabad, Telangana", 17.385044,78.486671],
+  ["2015", "Pune, Maharashtra", 18.5204,73.8567],
+  ["2019", "Hyderabad, Telangana", 17.385044,78.486671],
+  ["2022", "Bangalore, Karnataka", 12.9715987,77.594566],
+  ["2023", "Amsterdam, The Netherlands", 52.3676,4.9041],
+  ["2024", "Lelystad, The Netherlands", 52.5115,5.4752]
+];
+
+const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+const lerp = (a, b, t) => a + (b - a) * t;
+function durationToColor(dur, minDur, maxDur) {
+  const t = (dur - minDur) / Math.max(1e-6, (maxDur - minDur));
+  const light = lerp(78, 35, clamp(t, 0, 1));
+  return `hsl(216, 85%, ${light}%)`;
+}
+function computeDurations(items) {
+  return items.map((d, i) => {
+    const startY = parseInt(d[0], 10);
+    const endY = (i < items.length - 1) ? parseInt(items[i+1][0], 10) : new Date().getFullYear();
+    const duration = Math.max(0, endY - startY);
+    return { startY, endY, duration, name: d[1], lat: d[2], lng: d[3] };
+  });
+}
+const map = L.map('map', { zoomControl: true });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+const nodesLayer = L.layerGroup().addTo(map);
+const linesLayer = L.layerGroup().addTo(map);
+const enriched = computeDurations(journey);
+const durations = enriched.map(d => d.duration);
+const minDur = Math.min(...durations);
+const maxDur = Math.max(...durations);
+const latlngs = [];
+enriched.forEach(d => {
+  const color = durationToColor(d.duration, minDur, maxDur);
+  const ll = L.latLng(d.lat, d.lng);
+  latlngs.push(ll);
+  const marker = L.circleMarker(ll, {
+    radius: 8,
+    color: '#000',
+    weight: 1,
+    fillColor: color,
+    fillOpacity: 0.95
+  }).addTo(nodesLayer);
+  const label = `${d.name} — ${d.startY}–${d.endY}`;
+  marker.bindPopup(label);
+});
+map.fitBounds(L.latLngBounds(latlngs).pad(0.2));
+for (let i = 0; i < enriched.length - 1; i++) {
+  const a = enriched[i], b = enriched[i+1];
+  L.polyline([[a.lat, a.lng],[b.lat, b.lng]], { weight: 4, color: durationToColor(a.duration, minDur, maxDur) }).addTo(linesLayer);
+}
+</script>
+</body>
+</html>
